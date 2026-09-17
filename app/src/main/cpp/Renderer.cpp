@@ -48,6 +48,8 @@ void main() {
 }
 )";
 
+
+
 void Renderer::init() {
     if (!shader.compile(VS, FS)) {
         LOGE("Shader compile FAILED");
@@ -58,17 +60,12 @@ void Renderer::init() {
     uModel = glGetUniformLocation(shader.id, "uModel");
     uColor = glGetUniformLocation(shader.id, "uColor");
 
-    // Настоящий куб с правильными нормалями
+    // ============================================
+    // Правильный куб — все грани против часовой стрелки (CCW)
+    // при взгляде снаружи. Это важно для GL_CULL_FACE.
+    // ============================================
     float cube[] = {
-            // Back face
-            -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
-            0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
-            0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
-            0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
-            -0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
-            -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
-
-            // Front face
+            // Front (+Z)
             -0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f,
             0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f,
             0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f,
@@ -76,23 +73,31 @@ void Renderer::init() {
             -0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f,
             -0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f,
 
-            // Left face
-            -0.5f,  0.5f,  0.5f,  -1.0f,  0.0f,  0.0f,
-            -0.5f,  0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,
-            -0.5f, -0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,
+            // Back (-Z)
+            0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
+            -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
+            -0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
+            -0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
+            0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
+            0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f,
+
+            // Left (-X)
             -0.5f, -0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,
             -0.5f, -0.5f,  0.5f,  -1.0f,  0.0f,  0.0f,
             -0.5f,  0.5f,  0.5f,  -1.0f,  0.0f,  0.0f,
+            -0.5f,  0.5f,  0.5f,  -1.0f,  0.0f,  0.0f,
+            -0.5f,  0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,
+            -0.5f, -0.5f, -0.5f,  -1.0f,  0.0f,  0.0f,
 
-            // Right face
-            0.5f,  0.5f,  0.5f,   1.0f,  0.0f,  0.0f,
-            0.5f,  0.5f, -0.5f,   1.0f,  0.0f,  0.0f,
-            0.5f, -0.5f, -0.5f,   1.0f,  0.0f,  0.0f,
-            0.5f, -0.5f, -0.5f,   1.0f,  0.0f,  0.0f,
+            // Right (+X)
             0.5f, -0.5f,  0.5f,   1.0f,  0.0f,  0.0f,
+            0.5f, -0.5f, -0.5f,   1.0f,  0.0f,  0.0f,
+            0.5f,  0.5f, -0.5f,   1.0f,  0.0f,  0.0f,
+            0.5f,  0.5f, -0.5f,   1.0f,  0.0f,  0.0f,
             0.5f,  0.5f,  0.5f,   1.0f,  0.0f,  0.0f,
+            0.5f, -0.5f,  0.5f,   1.0f,  0.0f,  0.0f,
 
-            // Bottom face
+            // Bottom (-Y)
             -0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f,
             0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f,
             0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f,
@@ -100,13 +105,13 @@ void Renderer::init() {
             -0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f,
             -0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f,
 
-            // Top face
-            -0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,
-            0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,
-            0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f,
-            0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f,
+            // Top (+Y)
             -0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f,
+            0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f,
+            0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,
+            0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,
             -0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f,
+            -0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f,
     };
 
     glGenVertexArrays(1, &cubeVAO);
@@ -125,11 +130,12 @@ void Renderer::init() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);          // явно указываем
 
     glClearColor(0.53f, 0.78f, 0.96f, 1.0f);
 
     updateCamera();
-    LOGI("Renderer init done");
+    LOGI("Renderer init done — solid cubes");
 }
 
 void Renderer::updateCamera() {
@@ -214,30 +220,31 @@ void Renderer::destroy() {
 }
 
 bool Renderer::pickCell(const Grid& grid, float sx, float sy,
-                        int& outX, int& outY, int& outZ) {
+                        int& outX, int& outY, int& outZ)
+{
     if (width <= 0 || height <= 0) return false;
 
-    float ndcX = (2.0f * sx / width) - 1.0f;
-    float ndcY = 1.0f - (2.0f * sy / height);
+    float ndcX = (2.0f * sx / (float)width) - 1.0f;
+    float ndcY = 1.0f - (2.0f * sy / (float)height);
 
     glm::mat4 invVP = glm::inverse(proj * view);
-    glm::vec4 nearP = invVP * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
-    glm::vec4 farP  = invVP * glm::vec4(ndcX, ndcY,  1.0f, 1.0f);
-    nearP /= nearP.w;
-    farP  /= farP.w;
+    glm::vec4 near4 = invVP * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+    glm::vec4 far4  = invVP * glm::vec4(ndcX, ndcY,  1.0f, 1.0f);
+    near4 /= near4.w;
+    far4  /= far4.w;
 
-    glm::vec3 origin = glm::vec3(nearP);
-    glm::vec3 dir = glm::normalize(glm::vec3(farP - nearP));
+    glm::vec3 origin = glm::vec3(near4);
+    glm::vec3 dir    = glm::normalize(glm::vec3(far4 - near4));
 
-    // Ray vs AABB
+    // Ищем ближайший блок
     float bestT = 1e9f;
-    bool hitSomething = false;
-    int hitX = 0, hitY = 0, hitZ = 0;
+    bool hasHit = false;
+    int hx = 0, hy = 0, hz = 0;
 
-    for (const auto& pair : grid.cells) {
-        if (!pair.second.occupied) continue;
+    for (const auto& p : grid.cells) {
+        if (!p.second.occupied) continue;
 
-        int k = pair.first;
+        int k = p.first;
         int bx =  k        & 0x3FF;
         int by = (k >> 10) & 0x3FF;
         int bz = (k >> 20) & 0x3FF;
@@ -245,45 +252,57 @@ bool Renderer::pickCell(const Grid& grid, float sx, float sy,
         if (by > 511) by -= 1024;
         if (bz > 511) bz -= 1024;
 
-        glm::vec3 minP(bx - 0.5f, by - 0.5f, bz - 0.5f);
-        glm::vec3 maxP(bx + 0.5f, by + 0.5f, bz + 0.5f);
+        glm::vec3 bmin(bx - 0.5f, by - 0.5f, bz - 0.5f);
+        glm::vec3 bmax(bx + 0.5f, by + 0.5f, bz + 0.5f);
 
         float tmin = 0.0f, tmax = 1e9f;
         bool hit = true;
-        for (int i = 0; i < 3; ++i) {
+
+        for (int i = 0; i < 3; i++) {
             float o = (&origin.x)[i];
             float d = (&dir.x)[i];
-            float invD = 1.0f / (d + 1e-8f);
-            float t1 = ((&minP.x)[i] - o) * invD;
-            float t2 = ((&maxP.x)[i] - o) * invD;
+            float minB = (&bmin.x)[i];
+            float maxB = (&bmax.x)[i];
+
+            if (fabsf(d) < 1e-8f) {
+                if (o < minB || o > maxB) { hit = false; break; }
+                continue;
+            }
+
+            float t1 = (minB - o) / d;
+            float t2 = (maxB - o) / d;
             if (t1 > t2) std::swap(t1, t2);
+
             tmin = std::max(tmin, t1);
             tmax = std::min(tmax, t2);
             if (tmin > tmax) { hit = false; break; }
         }
 
-        if (hit && tmin < bestT && tmin > 0.0f) {
+        if (hit && tmin > 0.001f && tmin < bestT) {
             bestT = tmin;
-            hitX = bx; hitY = by; hitZ = bz;
-            hitSomething = true;
+            hx = bx;
+            hy = by;
+            hz = bz;
+            hasHit = true;
         }
     }
 
-    if (hitSomething) {
-        outX = hitX;
-        outY = hitY + 1;   // ставим сверху
-        outZ = hitZ;
+    if (hasHit) {
+        // Всегда ставим сверху
+        outX = hx;
+        outY = hy + 1;
+        outZ = hz;
         return true;
     }
 
     // Земля
-    if (std::fabs(dir.y) < 1e-5f) return false;
-    float t = (0.0f - origin.y) / dir.y;
+    if (fabsf(dir.y) < 1e-6f) return false;
+    float t = -origin.y / dir.y;
     if (t < 0.0f) return false;
 
-    glm::vec3 hit = origin + dir * t;
-    outX = (int)std::floor(hit.x + 0.5f);
+    glm::vec3 p = origin + dir * t;
+    outX = (int)roundf(p.x);
     outY = 0;
-    outZ = (int)std::floor(hit.z + 0.5f);
+    outZ = (int)roundf(p.z);
     return true;
 }

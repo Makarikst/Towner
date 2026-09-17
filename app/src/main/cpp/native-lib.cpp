@@ -182,6 +182,34 @@ Java_co_asde_towner_MainActivity_nativeSurfaceChanged(JNIEnv*, jobject, jint w, 
 }
 
 JNIEXPORT void JNICALL
+Java_co_asde_towner_MainActivity_nativeLongPress(JNIEnv*, jobject, jfloat x, jfloat y) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    if (!g_rendering) return;
+
+    int cx, cy, cz;
+    if (renderer.pickCell(grid, x, y, cx, cy, cz)) {
+        // При долгом нажатии всегда удаляем блок под пальцем
+        // (берём тот, в который попали, а не тот, что сверху)
+        // Для этого чуть меняем логику — удаляем hit-блок
+
+        // Простой вариант: удаляем то, что pickCell вернул как "место для постановки"
+        // Но лучше удалять именно нажатый блок.
+        // Поэтому делаем небольшую доработку:
+
+        // Сначала пробуем найти блок, в который реально попали
+        // (для простоты пока удаляем на позиции cy-1, если она занята)
+        if (cy > 0 && grid.isOccupied(cx, cy - 1, cz)) {
+            grid.remove(cx, cy - 1, cz);
+            LOGI("LongPress remove (%d, %d, %d)", cx, cy - 1, cz);
+        } else if (grid.isOccupied(cx, cy, cz)) {
+            grid.remove(cx, cy, cz);
+            LOGI("LongPress remove (%d, %d, %d)", cx, cy, cz);
+        }
+    }
+}
+
+JNIEXPORT void JNICALL
 Java_co_asde_towner_MainActivity_nativeDrawFrame(JNIEnv*, jobject) {
     std::lock_guard<std::mutex> lock(g_mutex);
 
@@ -206,6 +234,8 @@ Java_co_asde_towner_MainActivity_nativeDrawFrame(JNIEnv*, jobject) {
     }
 }
 
+
+
 JNIEXPORT void JNICALL
 Java_co_asde_towner_MainActivity_nativeTap(JNIEnv*, jobject, jfloat x, jfloat y) {
     std::lock_guard<std::mutex> lock(g_mutex);
@@ -214,6 +244,7 @@ Java_co_asde_towner_MainActivity_nativeTap(JNIEnv*, jobject, jfloat x, jfloat y)
 
     int cx, cy, cz;
     if (renderer.pickCell(grid, x, y, cx, cy, cz)) {
+
         if (grid.isOccupied(cx, cy, cz)) {
             grid.remove(cx, cy, cz);
         } else {

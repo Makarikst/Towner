@@ -35,3 +35,5 @@ private:
     float camPitch = 0.55f;   // радианы
     glm::vec3 camTarget = glm::vec3(0.0f, 1.5f, 0.0f);
 };
+bool pickBlockToDelete(const Grid& grid, float screenX, float screenY,
+                       int& outX, int& outY, int& outZ);

@@ -2,6 +2,8 @@ package co.asde.towner
 
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -10,7 +12,6 @@ import android.view.SurfaceView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
-import kotlin.math.atan2
 import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
@@ -24,17 +25,29 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     private var selectedColor = floatArrayOf(0.92f, 0.45f, 0.35f)
 
-    // Камера
+    // Камера + жесты
     private var lastX = 0f
     private var lastY = 0f
     private var isDragging = false
     private lateinit var scaleDetector: ScaleGestureDetector
 
+    // Долгое нажатие
+    private val longPressHandler = Handler(Looper.getMainLooper())
+    private var longPressTriggered = false
+    private var downX = 0f
+    private var downY = 0f
+
+    private val longPressRunnable = Runnable {
+        longPressTriggered = true
+        nativeLongPress(downX, downY)
+    }
+
     external fun nativeInit()
     external fun nativeSurfaceCreated(surface: android.view.Surface)
     external fun nativeSurfaceChanged(w: Int, h: Int)
     external fun nativeDrawFrame()
-    external fun nativeTap(x: Float, y: Float)
+    external fun nativeTap(x: Float, y: Float)           // короткий тап = поставить
+    external fun nativeLongPress(x: Float, y: Float)     // долгое = удалить
     external fun nativeSurfaceDestroyed()
     external fun nativeSetColor(r: Float, g: Float, b: Float)
     external fun nativeOrbit(dx: Float, dy: Float)
@@ -63,7 +76,6 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         surfaceView.holder.addCallback(this)
         rootLayout.addView(surfaceView)
 
-        // Палитра
         val paletteLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -107,13 +119,13 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         setContentView(rootLayout)
 
-        // Детектор масштаба
-        scaleDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                nativeZoom(detector.scaleFactor)
-                return true
-            }
-        })
+        scaleDetector = ScaleGestureDetector(this,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    nativeZoom(detector.scaleFactor)
+                    return true
+                }
+            })
 
         nativeInit()
         nativeSetColor(selectedColor[0], selectedColor[1], selectedColor[2])
@@ -160,40 +172,56 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         scaleDetector.onTouchEvent(event)
 
+        // Получаем реальные координаты относительно SurfaceView
+        val loc = IntArray(2)
+        surfaceView.getLocationOnScreen(loc)
+        val touchX = event.rawX - loc[0]
+        val touchY = event.rawY - loc[1]
+
         val paletteHeight = 140f
-        if (event.y > surfaceView.height - paletteHeight) {
-            return true // тапы по палитре игнорируем для строительства
+        if (touchY > surfaceView.height - paletteHeight) {
+            return true
         }
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (event.pointerCount == 1) {
-                    lastX = event.x
-                    lastY = event.y
+                    lastX = touchX
+                    lastY = touchY
+                    downX = touchX
+                    downY = touchY
                     isDragging = true
+                    longPressTriggered = false
+                    longPressHandler.postDelayed(longPressRunnable, 450)
                 }
             }
 
             MotionEvent.ACTION_MOVE -> {
                 if (event.pointerCount == 1 && isDragging && !scaleDetector.isInProgress) {
-                    val dx = event.x - lastX
-                    val dy = event.y - lastY
+                    val dx = touchX - lastX
+                    val dy = touchY - lastY
+
+                    if (sqrt(dx * dx + dy * dy) > 14f) {
+                        longPressHandler.removeCallbacks(longPressRunnable)
+                    }
+
                     nativeOrbit(dx, dy)
-                    lastX = event.x
-                    lastY = event.y
+                    lastX = touchX
+                    lastY = touchY
                 }
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (event.pointerCount <= 1) {
-                    // Если почти не двигали — это тап (строительство)
-                    val dx = event.x - lastX
-                    val dy = event.y - lastY
-                    if (isDragging && sqrt(dx * dx + dy * dy) < 15f) {
-                        nativeTap(event.x, event.y)
+                longPressHandler.removeCallbacks(longPressRunnable)
+
+                if (event.pointerCount <= 1 && isDragging && !longPressTriggered) {
+                    val dx = touchX - downX
+                    val dy = touchY - downY
+                    if (sqrt(dx * dx + dy * dy) < 20f) {
+                        nativeTap(touchX, touchY)
                     }
-                    isDragging = false
                 }
+                isDragging = false
             }
         }
         return true
@@ -201,6 +229,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onDestroy() {
         super.onDestroy()
+        longPressHandler.removeCallbacks(longPressRunnable)
         synchronized(lock) {
             stopRenderThread()
             try { nativeSurfaceDestroyed() } catch (_: Throwable) {}
