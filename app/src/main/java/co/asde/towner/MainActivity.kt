@@ -12,6 +12,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     @Volatile private var running = false
     private var renderThread: Thread? = null
+    private val lock = Object()          // для нормальной синхронизации
 
     external fun nativeInit()
     external fun nativeSurfaceCreated(surface: android.view.Surface)
@@ -33,14 +34,24 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        nativeSurfaceCreated(holder.surface)
-        running = true
-        renderThread = Thread {
-            while (running) {
-                nativeDrawFrame()
-                try { Thread.sleep(16) } catch (_: InterruptedException) { break }
-            }
-        }.also { it.start() }
+        synchronized(lock) {
+            // Останавливаем предыдущий поток, если он ещё жив
+            stopRenderThread()
+
+            nativeSurfaceCreated(holder.surface)
+            running = true
+
+            renderThread = Thread {
+                while (running) {
+                    try {
+                        nativeDrawFrame()
+                        Thread.sleep(16)
+                    } catch (_: InterruptedException) {
+                        break
+                    }
+                }
+            }.also { it.start() }
+        }
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -48,10 +59,21 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        synchronized(lock) {
+            stopRenderThread()
+            nativeSurfaceDestroyed()
+        }
+    }
+
+    private fun stopRenderThread() {
         running = false
-        renderThread?.join(500)
+        renderThread?.let { thread ->
+            thread.interrupt()                 // будим, если спит
+            try {
+                thread.join(1000)              // даём больше времени
+            } catch (_: InterruptedException) {}
+        }
         renderThread = null
-        nativeSurfaceDestroyed()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -59,5 +81,14 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             nativeTap(event.x, event.y)
         }
         return true
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        synchronized(lock) {
+            stopRenderThread()
+            // на всякий случай
+            try { nativeSurfaceDestroyed() } catch (_: Throwable) {}
+        }
     }
 }
