@@ -236,10 +236,10 @@ bool Renderer::pickCell(const Grid& grid, float sx, float sy,
     glm::vec3 origin = glm::vec3(near4);
     glm::vec3 dir    = glm::normalize(glm::vec3(far4 - near4));
 
-    // Ищем ближайший блок
     float bestT = 1e9f;
     bool hasHit = false;
     int hx = 0, hy = 0, hz = 0;
+    glm::vec3 hitPos(0.0f);
 
     for (const auto& p : grid.cells) {
         if (!p.second.occupied) continue;
@@ -280,18 +280,42 @@ bool Renderer::pickCell(const Grid& grid, float sx, float sy,
 
         if (hit && tmin > 0.001f && tmin < bestT) {
             bestT = tmin;
-            hx = bx;
-            hy = by;
-            hz = bz;
+            hx = bx; hy = by; hz = bz;
+            hitPos = origin + dir * tmin;
             hasHit = true;
         }
     }
 
     if (hasHit) {
-        // Всегда ставим сверху
-        outX = hx;
-        outY = hy + 1;
-        outZ = hz;
+        // Определяем грань
+        glm::vec3 center((float)hx, (float)hy, (float)hz);
+        glm::vec3 toHit = hitPos - center;
+
+        float ax = fabsf(toHit.x);
+        float ay = fabsf(toHit.y);
+        float az = fabsf(toHit.z);
+
+        int nx = 0, ny = 0, nz = 0;
+
+        // Приоритет горизонтальным граням (чтобы легче делать ветки)
+        if (ax > 0.35f && ax >= ay && ax >= az) {
+            nx = (toHit.x > 0) ? 1 : -1;
+        } else if (az > 0.35f && az >= ay) {
+            nz = (toHit.z > 0) ? 1 : -1;
+        } else {
+            ny = (toHit.y > 0) ? 1 : -1;
+        }
+
+        outX = hx + nx;
+        outY = hy + ny;
+        outZ = hz + nz;
+
+        // Если место занято — пробуем сверху
+        if (grid.isOccupied(outX, outY, outZ)) {
+            outX = hx;
+            outY = hy + 1;
+            outZ = hz;
+        }
         return true;
     }
 

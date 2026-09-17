@@ -15,6 +15,7 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 static Renderer renderer;
+static std::string g_worldsDir;
 static Grid grid;
 static ANativeWindow* window = nullptr;
 static EGLDisplay eglDisplay = EGL_NO_DISPLAY;
@@ -163,7 +164,44 @@ Java_co_asde_towner_MainActivity_nativeSurfaceCreated(JNIEnv* env, jobject, jobj
     g_rendering = true;
     LOGI("EGL initialized, rendering enabled");
 }
+JNIEXPORT void JNICALL
+Java_co_asde_towner_MainActivity_nativeSetWorldsDir(JNIEnv* env, jobject, jstring path) {
+    const char* str = env->GetStringUTFChars(path, nullptr);
+    g_worldsDir = str;
+    env->ReleaseStringUTFChars(path, str);
+    LOGI("Worlds dir: %s", g_worldsDir.c_str());
+}
 
+JNIEXPORT jboolean JNICALL
+Java_co_asde_towner_MainActivity_nativeSaveWorld(JNIEnv* env, jobject, jstring name) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    const char* str = env->GetStringUTFChars(name, nullptr);
+    std::string path = g_worldsDir + "/" + str + ".world";
+    env->ReleaseStringUTFChars(name, str);
+    bool ok = grid.save(path);
+    LOGI("Save %s: %s", path.c_str(), ok ? "OK" : "FAIL");
+    return ok;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_co_asde_towner_MainActivity_nativeLoadWorld(JNIEnv* env, jobject, jstring name) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    const char* str = env->GetStringUTFChars(name, nullptr);
+    std::string path = g_worldsDir + "/" + str + ".world";
+    env->ReleaseStringUTFChars(name, str);
+    bool ok = grid.load(path);
+    return ok;
+}
+
+JNIEXPORT void JNICALL
+Java_co_asde_towner_MainActivity_nativeNewWorld(JNIEnv*, jobject) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    grid.clear();
+    // Стартовые блоки
+    grid.place(0, 0, 0, glm::vec3(0.92f, 0.45f, 0.35f));
+    grid.place(1, 0, 0, glm::vec3(0.35f, 0.55f, 0.85f));
+    grid.place(1, 1, 0, glm::vec3(0.45f, 0.75f, 0.45f));
+}
 JNIEXPORT void JNICALL
 Java_co_asde_towner_MainActivity_nativeSurfaceChanged(JNIEnv*, jobject, jint w, jint h) {
     std::lock_guard<std::mutex> lock(g_mutex);
