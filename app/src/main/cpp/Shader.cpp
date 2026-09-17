@@ -18,7 +18,6 @@ bool Shader::compile(const char* vertexSrc, const char* fragmentSrc) {
         LOGE("Vertex shader error: %s", log);
         return false;
     }
-    LOGI("Vertex shader compiled OK");
 
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fs, 1, &fragmentSrc, nullptr);
@@ -31,7 +30,6 @@ bool Shader::compile(const char* vertexSrc, const char* fragmentSrc) {
         LOGE("Fragment shader error: %s", log);
         return false;
     }
-    LOGI("Fragment shader compiled OK");
 
     id = glCreateProgram();
     glAttachShader(id, vs);
@@ -54,5 +52,13 @@ bool Shader::compile(const char* vertexSrc, const char* fragmentSrc) {
     return true;
 }
 
-void Shader::use() const { glUseProgram(id); }
-void Shader::destroy() { if (id) glDeleteProgram(id); }
+void Shader::use() const {
+    glUseProgram(id);
+}
+
+void Shader::destroy() {
+    if (id) {
+        glDeleteProgram(id);
+        id = 0;
+    }
+}

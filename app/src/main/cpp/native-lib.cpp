@@ -7,6 +7,7 @@
 #include <android/log.h>
 #include <atomic>
 #include <mutex>
+#include <glm/glm.hpp>
 #include "Renderer.h"
 #include "Grid.h"
 
@@ -23,7 +24,8 @@ static EGLContext eglContext = EGL_NO_CONTEXT;
 static std::atomic<bool> g_rendering{false};
 static std::mutex g_mutex;
 
-// Указатель на eglSwapBuffersWithDamageKHR, если поддерживается
+static glm::vec3 g_currentColor = glm::vec3(0.92f, 0.45f, 0.35f);
+
 static PFNEGLSWAPBUFFERSWITHDAMAGEKHRPROC eglSwapBuffersWithDamageKHR = nullptr;
 
 extern "C" {
@@ -31,10 +33,17 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_co_asde_towner_MainActivity_nativeInit(JNIEnv*, jobject) {
     LOGI("nativeInit called");
-    grid.place(0, 0, 0, glm::vec3(0.9f, 0.5f, 0.3f));
-    grid.place(1, 0, 0, glm::vec3(0.3f, 0.7f, 0.9f));
-    grid.place(1, 1, 0, glm::vec3(0.5f, 0.9f, 0.4f));
+    grid.place(0, 0, 0, glm::vec3(0.92f, 0.45f, 0.35f));
+    grid.place(1, 0, 0, glm::vec3(0.35f, 0.55f, 0.85f));
+    grid.place(1, 1, 0, glm::vec3(0.45f, 0.75f, 0.45f));
     LOGI("Grid initialized with %d blocks", grid.count());
+}
+
+JNIEXPORT void JNICALL
+Java_co_asde_towner_MainActivity_nativeSetColor(JNIEnv*, jobject, jfloat r, jfloat g, jfloat b) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_currentColor = glm::vec3(r, g, b);
+    LOGI("Color set to %.2f %.2f %.2f", r, g, b);
 }
 
 JNIEXPORT void JNICALL
@@ -43,7 +52,6 @@ Java_co_asde_towner_MainActivity_nativeSurfaceCreated(JNIEnv* env, jobject, jobj
 
     g_rendering = false;
 
-    // На всякий случай очищаем предыдущее состояние
     if (eglDisplay != EGL_NO_DISPLAY) {
         eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         if (eglContext != EGL_NO_CONTEXT) {
@@ -101,7 +109,6 @@ Java_co_asde_towner_MainActivity_nativeSurfaceCreated(JNIEnv* env, jobject, jobj
         return;
     }
 
-    // Атрибуты поверхности
     const EGLint surfAttribs[] = {
             EGL_SWAP_BEHAVIOR, EGL_BUFFER_DESTROYED,
             EGL_NONE
@@ -109,7 +116,6 @@ Java_co_asde_towner_MainActivity_nativeSurfaceCreated(JNIEnv* env, jobject, jobj
 
     eglSurface = eglCreateWindowSurface(eglDisplay, config, window, surfAttribs);
     if (eglSurface == EGL_NO_SURFACE) {
-        LOGI("WARN: surfAttribs failed, trying nullptr");
         eglSurface = eglCreateWindowSurface(eglDisplay, config, window, nullptr);
     }
     if (eglSurface == EGL_NO_SURFACE) {
@@ -134,7 +140,6 @@ Java_co_asde_towner_MainActivity_nativeSurfaceCreated(JNIEnv* env, jobject, jobj
         return;
     }
 
-    // Делаем контекст current только для инициализации (на UI-потоке)
     if (!eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
         LOGI("ERROR: eglMakeCurrent failed: %d", eglGetError());
         eglDestroyContext(eglDisplay, eglContext);
@@ -146,26 +151,13 @@ Java_co_asde_towner_MainActivity_nativeSurfaceCreated(JNIEnv* env, jobject, jobj
         return;
     }
 
-    // Отключаем VSync
     eglSwapInterval(eglDisplay, 0);
 
-    // Получаем указатель на eglSwapBuffersWithDamageKHR
     eglSwapBuffersWithDamageKHR = (PFNEGLSWAPBUFFERSWITHDAMAGEKHRPROC)
             eglGetProcAddress("eglSwapBuffersWithDamageKHR");
-    if (eglSwapBuffersWithDamageKHR) {
-        LOGI("eglSwapBuffersWithDamageKHR available");
-    } else {
-        LOGI("eglSwapBuffersWithDamageKHR NOT available");
-    }
 
     renderer.init();
 
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        LOGI("ERROR: glGetError after init: %d", err);
-    }
-
-    // Можно отпустить контекст после инициализации
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
     g_rendering = true;
@@ -179,7 +171,6 @@ Java_co_asde_towner_MainActivity_nativeSurfaceChanged(JNIEnv*, jobject, jint w, 
     if (!g_rendering) return;
     if (eglDisplay == EGL_NO_DISPLAY || eglContext == EGL_NO_CONTEXT) return;
 
-    // Делаем контекст current на этом потоке (обычно UI)
     if (!eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
         LOGI("eglMakeCurrent failed in surfaceChanged: %d", eglGetError());
         return;
@@ -201,7 +192,6 @@ Java_co_asde_towner_MainActivity_nativeDrawFrame(JNIEnv*, jobject) {
         return;
     }
 
-    // КРИТИЧНО: делаем контекст current именно на потоке рендера
     if (!eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
         LOGI("eglMakeCurrent failed in drawFrame: %d", eglGetError());
         return;
@@ -209,7 +199,6 @@ Java_co_asde_towner_MainActivity_nativeDrawFrame(JNIEnv*, jobject) {
 
     renderer.draw(grid);
 
-    // Swap
     if (eglSwapBuffersWithDamageKHR) {
         eglSwapBuffersWithDamageKHR(eglDisplay, eglSurface, nullptr, 0);
     } else {
@@ -228,10 +217,22 @@ Java_co_asde_towner_MainActivity_nativeTap(JNIEnv*, jobject, jfloat x, jfloat y)
         if (grid.isOccupied(cx, cy, cz)) {
             grid.remove(cx, cy, cz);
         } else {
-            grid.place(cx, cy, cz, glm::vec3(0.7f, 0.8f, 0.9f));
+            grid.place(cx, cy, cz, g_currentColor);
         }
         LOGI("Tap -> (%d, %d, %d), blocks: %d", cx, cy, cz, grid.count());
     }
+}
+
+JNIEXPORT void JNICALL
+Java_co_asde_towner_MainActivity_nativeOrbit(JNIEnv*, jobject, jfloat dx, jfloat dy) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    renderer.orbit(dx, dy);
+}
+
+JNIEXPORT void JNICALL
+Java_co_asde_towner_MainActivity_nativeZoom(JNIEnv*, jobject, jfloat scale) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    renderer.zoom(scale);
 }
 
 JNIEXPORT void JNICALL
