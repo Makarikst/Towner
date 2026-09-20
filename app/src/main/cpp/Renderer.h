@@ -5,7 +5,9 @@
 #include "Shader.h"
 
 class Renderer {
+    GLint uMaterial = -1;
 public:
+    void pan(float dx, float dy);
     void init();
     void resize(int w, int h);
     void draw(const Grid& grid);
@@ -13,6 +15,8 @@ public:
 
     bool pickCell(const Grid& grid, float screenX, float screenY,
                   int& outX, int& outY, int& outZ);
+    bool pickBlockToDelete(const Grid& grid, float screenX, float screenY,
+                           int& outX, int& outY, int& outZ);
 
     // Управление камерой
     void orbit(float dx, float dy);
@@ -35,5 +39,3 @@ private:
     float camPitch = 0.55f;   // радианы
     glm::vec3 camTarget = glm::vec3(0.0f, 1.5f, 0.0f);
 };
-bool pickBlockToDelete(const Grid& grid, float screenX, float screenY,
-                       int& outX, int& outY, int& outZ);
