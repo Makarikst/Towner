@@ -191,38 +191,38 @@ void main() {
         col += (1.0 - cell) * 0.08;
     }
     // === ИСПРАВЛЕНО: перенесено внутрь main() и убрана лишняя скобка ===
-    else if (uMaterial == 16) { // СТАРЫЙ НАНОБЛОК — чёткая сотовая сетка как на референсе
-    // 1. Масштаб. Чем больше число — тем мельче шестиугольники.
-    //    Если гексы слишком крупные — ставь 12.0, 15.0.
-    //    Если слишком мелкие — ставь 5.0, 6.0.
-    float scale = 9.0;
-
-    // 2. Используем uv, который уже выбран по нормали (чтобы на всех гранях было одинаково)
+    else if (uMaterial == 16) { // Наноблок — шестиугольники
+    float scale = 6.0;
     vec2 p = uv * scale;
 
-    // 3. Математика для flat-top гексагональной сетки
-    vec2 r = vec2(1.0, 1.7320508); // 1 и sqrt(3)
-    vec2 h = r * 0.5;
-    vec2 a = mod(p, r) - h;
-    vec2 b = mod(p - h, r) - h;
+    // Осевые координаты
+    float q = p.x * 0.6666667;
+    float r = p.y * 0.5773503 - p.x * 0.3333333;
 
-    // 4. Расстояние до ближайшего центра шестиугольника
-    float d = min(hexDist(a), hexDist(b));
+    // Округление до центра ячейки
+    float qf = floor(q + 0.5);
+    float rf = floor(r + 0.5);
+    float sf = floor(-q - r + 0.5);
 
-    // 5. Рисуем границу между сотами
-    //    d = 0 в центре, d ~ 0.5 на границе.
-    //    smoothstep делает чёткий переход (тонкие рёбра).
-    float edge = smoothstep(0.44, 0.50, d);
+    float qd = abs(qf - q);
+    float rd = abs(rf - r);
+    float sd = abs(sf + q + r);
 
-    // 6. Цвета: светлые ячейки и тёмные рёбра (как на картинке)
-    vec3 cellColor = vec3(0.92); // почти белый
-    vec3 edgeColor = vec3(0.12); // почти чёрный
+    if (qd > rd && qd > sd) qf = -rf - sf;
+    else if (rd > sd)       rf = -qf - sf;
 
-    // Если хочешь, чтобы цвет зависел от uColor, раскомментируй строки ниже:
-    // vec3 cellColor = col * 1.25;
-    // vec3 edgeColor = col * 0.12;
+    // Вектор от центра в осевых координатах
+    float dq = q - qf;
+    float dr = r - rf;
 
-    col = mix(cellColor, edgeColor, edge);
+    // === Гексагональное расстояние (не круглое!) ===
+    float dist = max(abs(dq), max(abs(dr), abs(dq + dr)));
+
+    // Тонкая граница
+    float edge = smoothstep(0.42, 0.48, dist);
+
+    // Светлая ячейка + тёмное ребро
+    col = mix(col * 1.5, vec3(0.03), edge);
 }
 vec3 finalCol = col * lighting + rim;
     FragColor = vec4(finalCol, alpha);

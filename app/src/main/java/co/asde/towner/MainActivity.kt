@@ -114,22 +114,22 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         PaletteItem(false, 0, floatArrayOf(0.05f, 0.05f, 0.05f), "Чёрный"),
 
         // Материалы
-        //PaletteItem(true, 1,  floatArrayOf(0.75f, 0.35f, 0.25f), "Кирпич"),
-        //PaletteItem(true, 2,  floatArrayOf(0.55f, 0.55f, 0.58f), "Камень"),
-        //PaletteItem(true, 3,  floatArrayOf(0.70f, 0.85f, 0.95f), "Стекло"),
-        //PaletteItem(true, 4,  floatArrayOf(0.65f, 0.42f, 0.25f), "Дерево"),
-        //PaletteItem(true, 5,  floatArrayOf(0.70f, 0.72f, 0.75f), "Металл"),
-        //PaletteItem(true, 6,  floatArrayOf(0.72f, 0.50f, 0.30f), "Доски"),
-        //PaletteItem(true, 7,  floatArrayOf(0.92f, 0.92f, 0.95f), "Моноблок"),
-        //PaletteItem(true, 8,  floatArrayOf(0.85f, 0.85f, 0.88f), "Плитка"),
-        //PaletteItem(true, 9,  floatArrayOf(0.45f, 0.45f, 0.48f), "Гранит"),
-        //PaletteItem(true, 10, floatArrayOf(0.90f, 0.82f, 0.55f), "Песок"),
-        //PaletteItem(true, 11, floatArrayOf(0.88f, 0.85f, 0.78f), "Известняк"),
-        //PaletteItem(true, 12, floatArrayOf(0.60f, 0.45f, 0.55f), "Ткань"),
-        //PaletteItem(true, 13, floatArrayOf(0.95f, 0.80f, 0.25f), "Золото"),
-        //PaletteItem(true, 14, floatArrayOf(0.92f, 0.92f, 0.95f), "Наноблок 2.0"),
-        //PaletteItem(true, 15, floatArrayOf(0.92f, 0.92f, 0.95f), "Чёрный наноблок"),
-        //PaletteItem(true, 16, floatArrayOf(0.92f, 0.92f, 0.95f), "Наноблок")
+        PaletteItem(true, 1,  floatArrayOf(0.75f, 0.35f, 0.25f), "Кирпич"),
+        PaletteItem(true, 2,  floatArrayOf(0.55f, 0.55f, 0.58f), "Камень"),
+        PaletteItem(true, 3,  floatArrayOf(0.70f, 0.85f, 0.95f), "Стекло"),
+        PaletteItem(true, 4,  floatArrayOf(0.65f, 0.42f, 0.25f), "Дерево"),
+        PaletteItem(true, 5,  floatArrayOf(0.70f, 0.72f, 0.75f), "Металл"),
+        PaletteItem(true, 6,  floatArrayOf(0.72f, 0.50f, 0.30f), "Доски"),
+        // PaletteItem(true, 7,  floatArrayOf(0.92f, 0.92f, 0.95f), "Моноблок"),
+        PaletteItem(true, 8,  floatArrayOf(0.85f, 0.85f, 0.88f), "Плитка"),
+        PaletteItem(true, 9,  floatArrayOf(0.45f, 0.45f, 0.48f), "Гранит"),
+        PaletteItem(true, 10, floatArrayOf(0.90f, 0.82f, 0.55f), "Песок"),
+        PaletteItem(true, 11, floatArrayOf(0.88f, 0.85f, 0.78f), "Известняк"),
+        PaletteItem(true, 12, floatArrayOf(0.60f, 0.45f, 0.55f), "Ткань"),
+        PaletteItem(true, 13, floatArrayOf(0.95f, 0.80f, 0.25f), "Золото"),
+        // PaletteItem(true, 14, floatArrayOf(0.92f, 0.92f, 0.95f), "Наноблок 2.0"),
+        // PaletteItem(true, 15, floatArrayOf(0.92f, 0.92f, 0.95f), "Чёрный наноблок"),
+        PaletteItem(true, 16, floatArrayOf(0.92f, 0.92f, 0.95f), "Наноблок")
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
